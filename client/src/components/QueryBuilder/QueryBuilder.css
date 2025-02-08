@@ -104,4 +104,9 @@ input:invalid {
     width: 100%;
     margin-top: 8px;
   }
+}
+
+.drag-over {
+  border: 2px dashed #0066cc;
+  background-color: rgba(0, 102, 204, 0.05);
 } 

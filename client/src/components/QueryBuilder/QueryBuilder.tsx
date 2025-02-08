@@ -115,6 +115,19 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({ fields, onQueryChang
         value={condition.value}
         onChange={(e) => updateCondition(index, { value: e.target.value })}
         placeholder={`Enter ${type}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.currentTarget.classList.add('drag-over');
+        }}
+        onDragLeave={(e) => {
+          e.currentTarget.classList.remove('drag-over');
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.currentTarget.classList.remove('drag-over');
+          const fieldName = e.dataTransfer.getData('text/plain');
+          updateCondition(index, { value: fieldName });
+        }}
       />
     );
   };

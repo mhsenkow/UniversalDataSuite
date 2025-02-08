@@ -674,7 +674,19 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
                           return (
                             <>
                               {values.map((value, i) => (
-                                <span key={i} className="value-tag">
+                                <span
+                                  key={i}
+                                  className="value-tag"
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData('text/plain', field.name);
+                                    e.dataTransfer.setData('fieldType', field.type);
+                                    e.currentTarget.classList.add('dragging');
+                                  }}
+                                  onDragEnd={(e) => {
+                                    e.currentTarget.classList.remove('dragging');
+                                  }}
+                                >
                                   {String(value)}
                                 </span>
                               ))}
