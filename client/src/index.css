@@ -1,0 +1,98 @@
+/* Reset first */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap');
+
+/* Design tokens */
+:root {
+  --scale-000: 0.59rem;
+  --scale-00: 0.77rem;
+  --scale-0: 1rem;
+  --scale-1: 1.3rem;
+  --scale-2: 1.69rem;
+  --scale-3: 2.197rem;
+  
+  --text-primary: #161616;
+  --text-secondary: #525252;
+  --text-helper: #6f6f6f;
+  
+  --border-color: #e0e0e0;
+  --background-primary: #ffffff;
+  --background-secondary: #f4f4f4;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}
+
+/* Layout */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App structure */
+.app-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 100vh;
+  background: var(--background-primary);
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+/* Footer */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 16px;
+}
+
+.app-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: var(--scale-000);
+  color: var(--text-helper);
+  opacity: 0.4;
+  font-weight: 400;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  user-select: none;
+} 
