@@ -388,8 +388,9 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     if (chartOptions.xField && chartOptions.yField) {
       console.log('Chart options updated:', chartOptions);
       console.log('Current filtered data:', filteredData.length);
+      console.log('Sampled data size:', Math.min(filteredData.length, options.sampleSize));
     }
-  }, [chartOptions, filteredData]);
+  }, [chartOptions, filteredData, options.sampleSize]);
 
   // After the existing useEffect for data changes
   useEffect(() => {
