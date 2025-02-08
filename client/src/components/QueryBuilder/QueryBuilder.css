@@ -1,36 +1,45 @@
 .query-builder {
-  padding: 20px;
-  font-family: system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  border-top: 1px solid var(--border-color);
+  margin-top: 24px;
 }
 
 .condition {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
   align-items: center;
+  background: var(--background-secondary);
+  padding: 12px;
+  border-radius: var(--radius-sm);
 }
 
 select, input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  min-width: 120px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--scale-0);
+  min-width: 140px;
+  background: var(--background-primary);
+  color: var(--text-primary);
 }
 
 .between-inputs {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex: 1;
 }
 
 .between-inputs input {
-  width: 100px;
+  flex: 1;
+  min-width: 0;
 }
 
 .between-inputs span {
-  color: #666;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: var(--scale-0);
 }
 
 button {
@@ -38,22 +47,30 @@ button {
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--scale-0);
+  transition: all 0.2s ease;
 }
 
 .delete-btn {
   background: #dc3545;
-  padding: 8px 12px;
+  padding: 8px;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
 }
 
 .add-btn {
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 button:hover {
   opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 /* Style for boolean select */
@@ -74,11 +91,12 @@ input:invalid {
   }
   
   select, input {
-    flex: 1 1 calc(50% - 5px);
+    flex: 1;
     min-width: 0;
   }
   
   .between-inputs {
-    flex: 1;
+    width: 100%;
+    margin-top: 8px;
   }
 } 

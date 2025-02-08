@@ -3,9 +3,9 @@ import { QueryCondition, QueryOperator } from '../../types';
 import './QueryBuilder.css';
 
 interface QueryBuilderProps {
-  onQueryChange: (query: QueryCondition[]) => void;
+  onQueryChange: (query: any) => void;
   availableFields: string[];
-  fieldTypes?: Record<string, string>;
+  fieldTypes: Record<string, string>;
 }
 
 interface RangeValue {
@@ -13,11 +13,7 @@ interface RangeValue {
   max: string;
 }
 
-export const QueryBuilder: React.FC<QueryBuilderProps> = ({ 
-  onQueryChange, 
-  availableFields,
-  fieldTypes = {} 
-}) => {
+export const QueryBuilder: React.FC<QueryBuilderProps> = ({ onQueryChange, availableFields, fieldTypes }) => {
   const [conditions, setConditions] = useState<QueryCondition[]>([]);
 
   const getOperatorsForType = (fieldName: string): Array<{value: QueryOperator, label: string}> => {
@@ -159,6 +155,8 @@ export const QueryBuilder: React.FC<QueryBuilderProps> = ({
 
   return (
     <div className="query-builder">
+      <h3>Query Builder</h3>
+      <p>Query interface will be implemented here</p>
       <div className="conditions">
         {conditions.map((condition, index) => (
           <div key={index} className="condition">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DataSource as DataSourceType } from '../../types';
+import { DataSource as DataSourceType } from '../../types/index';
 import Papa from 'papaparse';
 import './DataSource.css';
 import { DatasetService } from '../../services/DatasetService';
@@ -8,13 +8,19 @@ import birdStrikesData from '../../data/bird-strikes.csv';
 import {
   Document,         // For text/string data
   DataStructured,   // For numeric data
-  CalendarEvent,    // For dates
   Checkmark,        // For boolean values
   HelpFilled,
   CharacterWholeNumber,
   Switcher,
-  CharacterLowerCase
+  CharacterLowerCase,
+  Upload,
+  ChevronLeft,
+  ChevronRight
 } from '@carbon/icons-react';
+import '../../test.css';
+import { QueryBuilder } from '../QueryBuilder/QueryBuilder';
+import { VegaChart } from '../VegaChart/VegaChart';
+import { ChartOptions } from '../Visualizations/types';
 
 interface DataSourceProps {
   onDataChange: (data: any[]) => void;
@@ -27,6 +33,21 @@ interface LoadingState {
   totalRows?: number;
   loadedRows?: number;
   error?: string;
+}
+
+interface ParsedData {
+  [key: string]: any;
+}
+
+interface DataSourceOptions {
+  maxColumns?: number;
+  sampleSize?: number;
+}
+
+interface QueryCondition {
+  field: string;
+  operator: string;
+  value: string;
 }
 
 // Add a helper function to get the icon for each type
@@ -45,6 +66,20 @@ const getTypeIcon = (type: string) => {
   }
 };
 
+// Create a new App wrapper component
+export const App: React.FC = () => {
+  return (
+    <div className="app-container test">
+      <div className="main-content">
+        <DataSource onDataChange={() => {}} />
+      </div>
+      <footer className="app-footer">
+        <h1 className="app-title">Jacklyn Domino</h1>
+      </footer>
+    </div>
+  );
+};
+
 export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   const [activeSource, setActiveSource] = useState<DataSourceType | null>(null);
   const [data, setData] = useState<any[]>([]);
@@ -54,6 +89,29 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     fileName: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [options, setOptions] = useState<DataSourceOptions>({
+    maxColumns: 3,
+    sampleSize: 1000
+  });
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [filteredData, setFilteredData] = useState<any[]>([]);
+  const [chartOptions, setChartOptions] = useState<ChartOptions>({
+    type: 'bar',
+    xField: '',
+    yField: '',
+    aggregation: 'count',
+    color: '',
+    groupBy: ''
+  });
+
+  // Update the column selector options
+  const columnOptions = [
+    { value: 'all', label: 'All columns' },
+    { value: '3', label: '3 columns' },
+    { value: '5', label: '5 columns' },
+    { value: '7', label: '7 columns' },
+    { value: '10', label: '10 columns' }
+  ];
 
   // Load bird strikes data on component mount
   useEffect(() => {
@@ -66,25 +124,26 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
           skipEmptyLines: 'greedy',
           complete: (results) => {
             if (results.data) {
-              const parsedData = results.data;
-              setData(parsedData);
+              // Sample the data immediately when loading
+              const sampledData = sampleColumns(results.data, options.maxColumns);
+              setData(sampledData);
               setActiveSource({
                 id: 'bird-strikes',
                 name: 'Bird Strikes Dataset',
                 type: 'snapshot',
                 lastUpdated: new Date(),
-                fields: Object.keys(parsedData[0]).map(key => ({
+                fields: Object.keys(sampledData[0]).map(key => ({
                   name: key,
-                  type: inferType(parsedData[0][key])
+                  type: inferType(sampledData[0][key])
                 }))
               });
-              onDataChange(parsedData);
+              onDataChange(sampledData);
             }
           }
         });
       })
       .catch(console.error);
-  }, []);
+  }, [options.maxColumns]); // Add maxColumns as dependency
 
   // Remove the old sample data
   const loadSampleData = () => {
@@ -119,34 +178,55 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   };
 
   const inferType = (value: any): string => {
-    if (value === undefined || value === null) return 'string';
-    if (!isNaN(Number(value))) return 'number';
-    if (value === 'true' || value === 'false') return 'boolean';
+    if (value === null || value === undefined) return 'string';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
     if (!isNaN(Date.parse(value))) return 'date';
     return 'string';
   };
 
+  // Modify sampleColumns to handle 'all' option
+  const sampleColumns = (data: any[], maxColumns: number | 'all' = 5): any[] => {
+    if (!data.length) return data;
+    
+    const allColumns = Object.keys(data[0]);
+    // If 'all' is selected, return full data
+    if (maxColumns === 'all') return data;
+    
+    // Rest of the existing sampling logic
+    const mandatoryColumns = ['Airport: Name'];
+    const mandatoryExisting = mandatoryColumns.filter(col => allColumns.includes(col));
+    
+    const remainingColumns = allColumns
+      .filter(col => !mandatoryExisting.includes(col))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Number(maxColumns) - mandatoryExisting.length);
+    
+    const selectedColumns = [...mandatoryExisting, ...remainingColumns];
+    
+    return data.map(row => {
+      const newRow: any = {};
+      selectedColumns.forEach(col => {
+        newRow[col] = row[col];
+      });
+      return newRow;
+    });
+  };
+
   const processData = (newData: any[], fileName: string) => {
-    // Validate data
-    if (!newData || !newData[0] || typeof newData[0] !== 'object') {
-      throw new Error('Invalid data format: Expected array of objects');
-    }
-
-    // Infer field types from the first row
-    const fields = Object.entries(newData[0]).map(([key, value]) => ({
-      name: key,
-      type: inferType(value)
-    }));
-
-    setData(newData);
+    const sampledData = sampleColumns(newData, options.maxColumns);
+    setData(sampledData);
     setActiveSource({
       id: fileName,
       name: fileName,
       type: 'snapshot',
       lastUpdated: new Date(),
-      fields
+      fields: Object.keys(sampledData[0]).map(key => ({
+        name: key,
+        type: inferType(sampledData[0][key])
+      }))
     });
-    onDataChange(newData);
+    onDataChange(sampledData);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,128 +278,61 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   const loadFile = () => {
     if (!selectedFile) return;
 
-    const estimatedRows = Math.ceil(selectedFile.size / 100);
-    setLoading({
+    setLoading(prev => ({
+      ...prev,
       isLoading: true,
       progress: 0,
-      fileName: selectedFile.name,
-      error: undefined,
-      totalRows: estimatedRows,
-      loadedRows: 0
-    });
+      error: undefined
+    }));
 
-    const fileType = selectedFile.name.split('.').pop()?.toLowerCase();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result;
+        if (typeof content !== 'string') {
+          throw new Error('Invalid file content');
+        }
 
-    if (fileType === 'csv') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const fileContent = e.target?.result;
-          if (!fileContent || typeof fileContent !== 'string') {
-            throw new Error('Failed to read file content');
-          }
-
-          // Parse the CSV directly without delimiter detection
-          Papa.parse(fileContent, {
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: 'greedy',
-            transform: (value) => value?.trim() || '',
-            transformHeader: (header) => header.trim(),
-            complete: (results) => {
-              try {
-                if (!results?.data) {
-                  throw new Error('No data received from CSV parser');
-                }
-
-                const cleanData = results.data.filter(row => {
-                  if (!row || typeof row !== 'object') return false;
-                  const values = Object.values(row).filter(v => v !== undefined);
-                  return values.length > 0 && values.some(v => v !== null && v !== '');
-                });
-
-                if (cleanData.length === 0) {
-                  throw new Error('No valid data found in file');
-                }
-
-                processData(cleanData, selectedFile.name);
-                setLoading({
-                  isLoading: false,
-                  progress: 100,
-                  fileName: selectedFile.name,
-                  loadedRows: cleanData.length,
-                  totalRows: cleanData.length
-                });
-                setSelectedFile(null);
-              } catch (error) {
-                console.error('CSV processing error:', error);
-                setLoading(prev => ({
-                  ...prev,
-                  isLoading: false,
-                  error: error instanceof Error ? error.message : 'Error processing CSV data'
-                }));
-              }
-            },
-            error: (error) => {
-              console.error('Papa Parse error:', error);
-              setLoading(prev => ({
-                ...prev,
-                isLoading: false,
-                error: `Error parsing CSV: ${error.message}`
+        Papa.parse(content, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: 'greedy',
+          complete: (results: Papa.ParseResult<ParsedData>) => {
+            if (results.data && results.data.length > 0 && typeof results.data[0] === 'object' && results.data[0] !== null) {
+              const fields = Object.keys(results.data[0]).map(key => ({
+                name: key,
+                type: inferType(results.data[0][key])
               }));
+              setData(results.data);
+              setActiveSource({
+                id: selectedFile.name,
+                name: selectedFile.name,
+                type: 'snapshot',
+                lastUpdated: new Date(),
+                fields
+              });
+              onDataChange(results.data);
+              setLoading(prev => ({ ...prev, isLoading: false, progress: 100 }));
             }
-          });
-        } catch (error) {
-          console.error('File reading error:', error);
-          setLoading(prev => ({
-            ...prev,
-            isLoading: false,
-            error: error instanceof Error ? error.message : 'Error reading file'
-          }));
-        }
-      };
-
-      reader.onerror = () => {
+          },
+          error: (error) => {
+            setLoading(prev => ({
+              ...prev,
+              isLoading: false,
+              error: `Error parsing file: ${error.message}`
+            }));
+          }
+        });
+      } catch (error) {
         setLoading(prev => ({
           ...prev,
           isLoading: false,
-          error: 'Error reading file'
+          error: error instanceof Error ? error.message : 'Error reading file'
         }));
-      };
+      }
+    };
 
-      reader.readAsText(selectedFile, 'utf-8');
-    } else if (fileType === 'json') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const json = JSON.parse(e.target?.result as string);
-          if (!Array.isArray(json)) {
-            throw new Error('JSON must be an array of objects');
-          }
-          if (json.length === 0) {
-            throw new Error('File contains no data');
-          }
-          processData(json, selectedFile.name);
-          setLoading(prev => ({ ...prev, isLoading: false, progress: 100 }));
-        } catch (error) {
-          setLoading(prev => ({
-            ...prev,
-            isLoading: false,
-            error: `Error parsing JSON: ${error.message}`
-          }));
-        }
-      };
-
-      reader.onerror = () => {
-        setLoading(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Error reading file'
-        }));
-      };
-
-      reader.readAsText(selectedFile);
-    }
+    reader.readAsText(selectedFile);
   };
 
   const getUniqueValues = (data: any[], fieldName: string, limit: number = 20) => {
@@ -332,107 +345,328 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     };
   };
 
+  // Update handleQueryChange to affect both filtered data and chart
+  const handleQueryChange = (query: QueryCondition[]) => {
+    if (!query.length) {
+      setFilteredData(data);
+      return;
+    }
+
+    const filtered = data.filter(item => {
+      return query.every(condition => {
+        const value = item[condition.field];
+        switch (condition.operator) {
+          case 'equals':
+            return value === condition.value;
+          case 'contains':
+            return value?.toString().toLowerCase().includes(condition.value.toLowerCase());
+          case 'greater_than':
+            return value > Number(condition.value);
+          case 'less_than':
+            return value < Number(condition.value);
+          case 'between':
+            const range = JSON.parse(condition.value);
+            return value >= Number(range.min) && value <= Number(range.max);
+          case 'starts_with':
+            return value?.toString().toLowerCase().startsWith(condition.value.toLowerCase());
+          case 'ends_with':
+            return value?.toString().toLowerCase().endsWith(condition.value.toLowerCase());
+          default:
+            return true;
+        }
+      });
+    });
+    setFilteredData(filtered);
+  };
+
+  // Initialize filteredData when data changes
+  useEffect(() => {
+    setFilteredData(data);
+  }, [data]);
+
+  // Add chart configuration section to the side panel
+  const renderChartConfig = () => {
+    if (!data.length) return null;
+    
+    // Get all fields from the data
+    const allFields = Object.keys(data[0]);
+    
+    // Identify numeric fields for Y-axis
+    const numericFields = allFields.filter(field => 
+      typeof data[0][field] === 'number' || 
+      !isNaN(Number(data[0][field]))
+    );
+    
+    // All fields can be used for X-axis, grouping, and coloring
+    const categoricalFields = allFields.filter(field => 
+      typeof data[0][field] === 'string' ||
+      data[0][field] instanceof Date
+    );
+
+    return (
+      <div className="chart-config">
+        <h4 className="config-section-title">Chart Configuration</h4>
+        
+        <div className="config-group">
+          <label>Chart Type</label>
+          <select
+            value={chartOptions.type}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              type: e.target.value as any
+            }))}
+          >
+            <option value="bar">Bar Chart</option>
+            <option value="line">Line Chart</option>
+            <option value="area">Area Chart</option>
+            <option value="point">Scatter Plot</option>
+            <option value="circle">Bubble Chart</option>
+          </select>
+        </div>
+
+        <div className="config-group">
+          <label>X Axis</label>
+          <select
+            value={chartOptions.xField}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              xField: e.target.value
+            }))}
+          >
+            <option value="">Select field</option>
+            {allFields.map(field => (
+              <option key={field} value={field}>{field}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="config-group">
+          <label>Y Axis</label>
+          <select
+            value={chartOptions.yField}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              yField: e.target.value
+            }))}
+          >
+            <option value="">Select field</option>
+            {numericFields.map(field => (
+              <option key={field} value={field}>{field}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="config-group">
+          <label>Aggregation</label>
+          <select
+            value={chartOptions.aggregation}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              aggregation: e.target.value as any
+            }))}
+          >
+            <option value="count">Count</option>
+            <option value="sum">Sum</option>
+            <option value="mean">Average</option>
+            <option value="min">Minimum</option>
+            <option value="max">Maximum</option>
+            <option value="median">Median</option>
+          </select>
+        </div>
+
+        <div className="config-group">
+          <label>Group By</label>
+          <select
+            value={chartOptions.groupBy}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              groupBy: e.target.value
+            }))}
+          >
+            <option value="">None</option>
+            {categoricalFields.map(field => (
+              <option key={field} value={field}>{field}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="config-group">
+          <label>Color By</label>
+          <select
+            value={chartOptions.color}
+            onChange={(e) => setChartOptions(prev => ({
+              ...prev,
+              color: e.target.value
+            }))}
+          >
+            <option value="">None</option>
+            {categoricalFields.map(field => (
+              <option key={field} value={field}>{field}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="data-source">
-      <h2>Data Source</h2>
-      <div className="source-controls">
-        <button onClick={loadSampleData}>Load Sample Data</button>
-        <div className="file-upload">
-          <div className="file-input-group">
-            <input
-              type="file"
-              accept=".json,.csv"
-              onChange={handleFileSelect}
-              id="file-input"
-            />
-            {selectedFile && (
-              <button 
-                onClick={loadFile}
-                className="load-btn"
-                disabled={loading.isLoading}
-              >
-                {loading.isLoading ? 'Loading...' : 'Load File'}
-              </button>
+      <div className="data-source-header">
+        <div className="header-main">
+          <h2 className="data-source-title">{activeSource?.name}</h2>
+          <div className="data-source-metadata">
+            <span className="data-source-type">Type: {activeSource?.type}</span>
+            <span className="data-source-date">
+              Last Updated: {activeSource?.lastUpdated.toLocaleString()}
+            </span>
+          </div>
+        </div>
+        <div className="header-controls">
+          <select 
+            className="column-select"
+            value={options.maxColumns}
+            onChange={(e) => setOptions(prev => ({
+              ...prev,
+              maxColumns: e.target.value === 'all' ? 'all' : Number(e.target.value)
+            }))}
+          >
+            {columnOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <button 
+            className="reload-btn"
+            onClick={() => processData(data, activeSource?.name || '')}
+            title="Resample columns"
+          >
+            ↻
+          </button>
+        </div>
+      </div>
+      
+      <div className="data-source-content">
+        <div className={`main-panel ${isPanelOpen ? 'panel-open' : ''}`}>
+          <div className="input-section">
+            <div className="source-controls">
+              <div className="file-input-group">
+                <div className="file-upload">
+                  <button 
+                    className="file-upload-button"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                  >
+                    <Upload />
+                  </button>
+                  <span className="file-name">
+                    {selectedFile ? selectedFile.name : 'No file chosen'}
+                  </span>
+                  <span className="supported-formats">
+                    Supported: JSON, CSV (max 50MB)
+                  </span>
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept=".csv,.json"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <button 
+                  className="load-sample-btn"
+                  onClick={loadSampleData}
+                >
+                  Load Sample Data
+                </button>
+              </div>
+            </div>
+
+            {activeSource && (
+              <div className="source-info">
+                <h4>Fields:</h4>
+                <ul className="field-list">
+                  {activeSource.fields.map(field => (
+                    <li key={field.name} className="field-item">
+                      <div className="field-header">
+                        <span className="field-name">{field.name}</span>
+                        <span className="field-type">
+                          {getTypeIcon(field.type)}
+                          <span className="type-text">({field.type})</span>
+                        </span>
+                      </div>
+                      {data.length > 0 && (
+                        <div className="field-values">
+                          {(() => {
+                            const { values, total, hasMore } = getUniqueValues(data, field.name);
+                            return (
+                              <>
+                                {values.map((value, i) => (
+                                  <span key={i} className="value-tag">
+                                    {String(value)}
+                                  </span>
+                                ))}
+                                {hasMore && (
+                                  <span className="more-values">
+                                    +{total - values.length} more
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
-          <small>Supported formats: JSON, CSV (max 50MB)</small>
-          
-          {/* Loading indicator with error handling */}
-          {(selectedFile || loading.isLoading) && (
-            <div className={`loading-status ${loading.error ? 'error' : ''}`}>
-              <div className="file-info">
-                <span>{loading.fileName}</span>
-                {loading.loadedRows && !loading.error && (
-                  <span className="row-count">
-                    {loading.loadedRows.toLocaleString()} rows
-                  </span>
-                )}
+
+          {data.length > 0 && (
+            <div className="output-section">
+              <VegaChart 
+                data={filteredData}
+                options={chartOptions}
+                fields={data.length ? Object.keys(data[0]).map(key => ({
+                  name: key,
+                  type: typeof data[0][key]
+                })) : []}
+              />
+              <div className="data-preview">
+                <h2>Data Preview</h2>
+                <pre>{JSON.stringify(filteredData.slice(0, 10), null, 2)}</pre>
               </div>
-              {loading.error ? (
-                <div className="error-message">
-                  {loading.error}
-                </div>
-              ) : (
-                <>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ width: `${loading.progress}%` }}
-                    />
-                  </div>
-                  {loading.isLoading && (
-                    <div className="loading-text">
-                      Loading... {Math.round(loading.progress)}%
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           )}
         </div>
-      </div>
-      {activeSource && (
-        <div className="source-info">
-          <h3>{activeSource.name}</h3>
-          <p>Type: {activeSource.type}</p>
-          <p>Last Updated: {activeSource.lastUpdated.toLocaleString()}</p>
-          <h4>Fields:</h4>
-          <ul className="field-list">
-            {activeSource.fields.map(field => (
-              <li key={field.name} className="field-item">
-                <div className="field-header">
-                  <span className="field-name">{field.name}</span>
-                  <span className="field-type">
-                    {getTypeIcon(field.type)}
-                    <span className="type-text">({field.type})</span>
-                  </span>
-                </div>
-                {data.length > 0 && (
-                  <div className="field-values">
-                    {(() => {
-                      const { values, total, hasMore } = getUniqueValues(data, field.name);
-                      return (
-                        <>
-                          {values.map((value, i) => (
-                            <span key={i} className="value-tag">
-                              {String(value)}
-                            </span>
-                          ))}
-                          {hasMore && (
-                            <span className="more-values">
-                              +{total - values.length} more
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+
+        <div className={`side-panel ${isPanelOpen ? 'open' : ''}`}>
+          <button 
+            className="side-panel-toggle"
+            onClick={() => setIsPanelOpen(!isPanelOpen)}
+            aria-label={isPanelOpen ? 'Close panel' : 'Open panel'}
+          >
+            {isPanelOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+          
+          <div className="query-builder-container">
+            <div className="query-builder-header">
+              <h3 className="query-builder-title">Query & Visualization</h3>
+            </div>
+            
+            <QueryBuilder 
+              onQueryChange={handleQueryChange}
+              availableFields={data.length ? Object.keys(data[0]) : []}
+              fieldTypes={data.length ? Object.keys(data[0]).reduce((types, key) => ({
+                ...types,
+                [key]: typeof data[0][key]
+              }), {}) : {}}
+            />
+            
+            {renderChartConfig()}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }; 
