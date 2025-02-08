@@ -1,0 +1,16 @@
+jacklyn-domino/
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── QueryBuilder/
+│   │   │   ├── Visualizations/
+│   │   │   └── Dashboard/
+│   │   ├── services/
+│   │   └── utils/
+├── server/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── services/
+│   │   └── utils/
+└── shared/
+    └── types/ 

@@ -1,0 +1,84 @@
+.query-builder {
+  padding: 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.condition {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+select, input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.between-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.between-inputs input {
+  width: 100px;
+}
+
+.between-inputs span {
+  color: #666;
+  font-size: 14px;
+}
+
+button {
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.delete-btn {
+  background: #dc3545;
+  padding: 8px 12px;
+}
+
+.add-btn {
+  margin-top: 10px;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* Style for boolean select */
+select.boolean-select {
+  min-width: 100px;
+}
+
+/* Validation styles */
+input:invalid {
+  border-color: #dc3545;
+  background-color: #fff8f8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .condition {
+    flex-wrap: wrap;
+  }
+  
+  select, input {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
+  
+  .between-inputs {
+    flex: 1;
+  }
+} 
