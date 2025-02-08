@@ -16,7 +16,21 @@ export const VegaChart: React.FC<VegaChartProps> = ({ data, fields, options }) =
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!chartRef.current || !data.length) return;
+    if (!chartRef.current || !data.length || !options.xField) return;
+
+    const getFieldType = (fieldName: string) => {
+      const field = fields.find(f => f.name === fieldName);
+      if (!field) return 'nominal';
+      
+      switch (field.type) {
+        case 'number':
+          return 'quantitative';
+        case 'date':
+          return 'temporal';
+        default:
+          return 'nominal';
+      }
+    };
 
     const spec = {
       $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
@@ -26,26 +40,21 @@ export const VegaChart: React.FC<VegaChartProps> = ({ data, fields, options }) =
       mark: options.type,
       encoding: {
         x: {
-          field: options.xField || fields[0].name,
-          type: fields.find(f => f.name === options.xField)?.type === 'number' ? 'quantitative' : 'nominal',
+          field: options.xField,
+          type: getFieldType(options.xField),
           axis: { labelAngle: -45 }
         },
-        y: {
-          field: options.yField,
-          aggregate: options.aggregation,
-          type: 'quantitative',
-          title: `${options.aggregation} of ${options.yField}`
-        },
+        y: options.aggregation === 'count' 
+          ? { aggregate: 'count' }
+          : {
+              field: options.yField,
+              aggregate: options.aggregation,
+              type: getFieldType(options.yField)
+            },
         ...(options.color && {
           color: {
             field: options.color,
-            type: 'nominal'
-          }
-        }),
-        ...(options.groupBy && {
-          column: {
-            field: options.groupBy,
-            type: 'nominal'
+            type: getFieldType(options.color)
           }
         })
       }
@@ -54,7 +63,9 @@ export const VegaChart: React.FC<VegaChartProps> = ({ data, fields, options }) =
     embed(chartRef.current, spec, {
       actions: false,
       theme: 'light'
-    }).catch(console.error);
+    }).catch(error => {
+      console.error('Chart rendering error:', error);
+    });
   }, [data, fields, options]);
 
   return (

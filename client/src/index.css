@@ -10,12 +10,12 @@
 
 /* Design tokens */
 :root {
-  --scale-000: 0.59rem;
-  --scale-00: 0.77rem;
+  --scale-000: 0.75rem;
+  --scale-00: 0.875rem;
   --scale-0: 1rem;
-  --scale-1: 1.3rem;
-  --scale-2: 1.69rem;
-  --scale-3: 2.197rem;
+  --scale-1: 1.125rem;
+  --scale-2: 1.25rem;
+  --scale-3: 1.5rem;
   
   --text-primary: #161616;
   --text-secondary: #525252;
@@ -25,9 +25,17 @@
   --background-primary: #ffffff;
   --background-secondary: #f4f4f4;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --radius-sm: 4px;
   --radius-md: 8px;
+  --primary-color: #0066cc;
+  --background-hover: #f8f9fa;
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
 }
 
 /* Layout */
@@ -65,10 +73,17 @@ body {
 
 .main-content {
   flex: 1;
-  overflow-y: auto;
   background: var(--background-primary);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin: var(--spacing-lg);
+}
+
+.data-source {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Footer */

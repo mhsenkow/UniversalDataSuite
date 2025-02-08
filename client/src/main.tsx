@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { QueryBuilder } from './components/QueryBuilder/QueryBuilder';
 import { DataSource } from './components/DataSource/DataSource';
 import { QueryCondition } from './types';
-import { VegaChart } from './components/Visualizations/VegaChart';
+import { VegaChart } from './components/VegaChart/VegaChart';
 
 // Import styles in the correct order
 import './index.css';  // Global styles only

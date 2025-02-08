@@ -20,30 +20,33 @@ const App = () => {
   };
 
   const handleQueryChange = (query: QueryCondition[]) => {
-    const filtered = data.filter(item => {
+    // Limit the number of items we filter at once
+    const maxFilterItems = 1000;
+    const dataToFilter = data.slice(0, maxFilterItems);
+    
+    const filtered = dataToFilter.filter(item => {
       return query.every(condition => {
         const value = item[condition.field];
+        if (value === undefined || value === null) return false;
+        
         switch (condition.operator) {
           case 'equals':
             return value === condition.value;
           case 'contains':
-            return value.toString().toLowerCase().includes(condition.value.toLowerCase());
+            return String(value).toLowerCase().includes(String(condition.value).toLowerCase());
           case 'greater_than':
-            return value > Number(condition.value);
+            return Number(value) > Number(condition.value);
           case 'less_than':
-            return value < Number(condition.value);
+            return Number(value) < Number(condition.value);
           case 'between':
             const range = JSON.parse(condition.value);
-            return value >= Number(range.min) && value <= Number(range.max);
-          case 'starts_with':
-            return value.toString().toLowerCase().startsWith(condition.value.toLowerCase());
-          case 'ends_with':
-            return value.toString().toLowerCase().endsWith(condition.value.toLowerCase());
+            return Number(value) >= Number(range.min) && Number(value) <= Number(range.max);
           default:
             return true;
         }
       });
     });
+    
     setFilteredData(filtered);
   };
 

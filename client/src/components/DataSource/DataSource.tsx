@@ -42,12 +42,19 @@ interface ParsedData {
 interface DataSourceOptions {
   maxColumns?: number;
   sampleSize?: number;
+  sampleMethod: 'random' | 'frequency' | 'first' | 'distributed';
 }
 
 interface QueryCondition {
   field: string;
   operator: string;
   value: string;
+}
+
+interface ValueDisplayOptions {
+  maxUniqueValues: number;
+  sampleSize: number;
+  displayMethod: 'random' | 'frequency' | 'first' | 'distributed';
 }
 
 // Add a helper function to get the icon for each type
@@ -91,7 +98,8 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [options, setOptions] = useState<DataSourceOptions>({
     maxColumns: 3,
-    sampleSize: 1000
+    sampleSize: 1000,
+    sampleMethod: 'random'
   });
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filteredData, setFilteredData] = useState<any[]>([]);
@@ -152,7 +160,12 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
 
   // Remove the old sample data
   const loadSampleData = () => {
-    // This will now just re-trigger loading the bird strikes data
+    setLoading({
+      isLoading: true,
+      progress: 0,
+      fileName: 'bird-strikes.csv'
+    });
+
     fetch(birdStrikesData)
       .then(response => response.text())
       .then(csvText => {
@@ -163,23 +176,30 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
           complete: (results) => {
             if (results.data) {
               const parsedData = results.data;
-              setData(parsedData);
-              setActiveSource({
-                id: 'bird-strikes',
-                name: 'Bird Strikes Dataset',
-                type: 'snapshot',
-                lastUpdated: new Date(),
-                fields: Object.keys(parsedData[0]).map(key => ({
-                  name: key,
-                  type: inferType(parsedData[0][key])
-                }))
-              });
-              onDataChange(parsedData);
+              processData(parsedData, 'Bird Strikes Dataset');
+              setLoading(prev => ({ 
+                ...prev, 
+                isLoading: false, 
+                progress: 100 
+              }));
             }
+          },
+          error: (error) => {
+            setLoading(prev => ({
+              ...prev,
+              isLoading: false,
+              error: `Error loading sample data: ${error.message}`
+            }));
           }
         });
       })
-      .catch(console.error);
+      .catch(error => {
+        setLoading(prev => ({
+          ...prev,
+          isLoading: false,
+          error: `Failed to load sample data: ${error.message}`
+        }));
+      });
   };
 
   const inferType = (value: any): string => {
@@ -218,18 +238,23 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     });
   };
 
-  const processData = (newData: any[], fileName: string) => {
-    const sampledData = sampleColumns(newData, options.maxColumns);
+  const processData = (rawData: any[], fileName: string) => {
+    // Limit initial data load
+    const maxInitialRows = 1000;
+    const sampledData = rawData.slice(0, maxInitialRows);
+    
+    const fields = Object.keys(sampledData[0]).map(key => ({
+      name: key,
+      type: inferType(sampledData[0][key])
+    }));
+
     setData(sampledData);
     setActiveSource({
       id: fileName,
       name: fileName,
       type: 'snapshot',
       lastUpdated: new Date(),
-      fields: Object.keys(sampledData[0]).map(key => ({
-        name: key,
-        type: inferType(sampledData[0][key])
-      }))
+      fields
     });
     onDataChange(sampledData);
   };
@@ -239,9 +264,34 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     if (file) {
       setSelectedFile(file);
       setLoading({
-        isLoading: false,
+        isLoading: true,
         progress: 0,
         fileName: file.name
+      });
+
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: 'greedy',
+        chunk: (results, parser) => {
+          // Process data in chunks to avoid memory issues
+          processData(results.data, file.name);
+          parser.abort(); // Stop after first chunk for now
+        },
+        error: (error) => {
+          setLoading(prev => ({
+            ...prev,
+            isLoading: false,
+            error: `Error parsing file: ${error.message}`
+          }));
+        },
+        complete: () => {
+          setLoading(prev => ({
+            ...prev,
+            isLoading: false,
+            progress: 100
+          }));
+        }
       });
     }
   };
@@ -280,73 +330,23 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     // Rest of the validation...
   };
 
-  const loadFile = () => {
-    if (!selectedFile) return;
-
-    setLoading(prev => ({
-      ...prev,
-      isLoading: true,
-      progress: 0,
-      error: undefined
-    }));
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result;
-        if (typeof content !== 'string') {
-          throw new Error('Invalid file content');
-        }
-
-        Papa.parse(content, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: 'greedy',
-          complete: (results: Papa.ParseResult<ParsedData>) => {
-            if (results.data && results.data.length > 0 && typeof results.data[0] === 'object' && results.data[0] !== null) {
-              const fields = Object.keys(results.data[0]).map(key => ({
-                name: key,
-                type: inferType(results.data[0][key])
-              }));
-              setData(results.data);
-              setActiveSource({
-                id: selectedFile.name,
-                name: selectedFile.name,
-                type: 'snapshot',
-                lastUpdated: new Date(),
-                fields
-              });
-              onDataChange(results.data);
-              setLoading(prev => ({ ...prev, isLoading: false, progress: 100 }));
-            }
-          },
-          error: (error) => {
-            setLoading(prev => ({
-              ...prev,
-              isLoading: false,
-              error: `Error parsing file: ${error.message}`
-            }));
-          }
-        });
-      } catch (error) {
-        setLoading(prev => ({
-          ...prev,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Error reading file'
-        }));
-      }
-    };
-
-    reader.readAsText(selectedFile);
-  };
-
-  const getUniqueValues = (data: any[], fieldName: string, limit: number = 20) => {
-    const values = [...new Set(data.map(item => item[fieldName]))];
-    const total = values.length;
+  const getUniqueValues = (data: any[], fieldName: string) => {
+    const allValues = data.map(item => item[fieldName]);
+    const uniqueValues = Array.from(new Set(allValues));
+    const total = uniqueValues.length;
+    
+    // Use the sampleSize from options
+    const sampleSize = Math.min(options.sampleSize || 5, total);
+    
+    // Get random sample
+    const selectedValues = uniqueValues
+      .sort(() => Math.random() - 0.5)
+      .slice(0, sampleSize);
+    
     return {
-      values: values.slice(0, limit),
+      values: selectedValues,
       total,
-      hasMore: total > limit
+      hasMore: total > sampleSize
     };
   };
 
@@ -360,6 +360,8 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     const filtered = data.filter(item => {
       return query.every(condition => {
         const value = item[condition.field];
+        if (value === undefined || value === null) return false;
+        
         switch (condition.operator) {
           case 'equals':
             return value === condition.value || value?.toString() === condition.value;
@@ -372,19 +374,24 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
           case 'between':
             const range = JSON.parse(condition.value);
             return Number(value) >= Number(range.min) && Number(value) <= Number(range.max);
-          case 'starts_with':
-            return value?.toString().toLowerCase().startsWith(condition.value.toLowerCase());
-          case 'ends_with':
-            return value?.toString().toLowerCase().endsWith(condition.value.toLowerCase());
           default:
             return true;
         }
       });
     });
+
     setFilteredData(filtered);
   };
 
-  // Initialize filteredData when data changes
+  // Add this new effect to handle chart updates
+  useEffect(() => {
+    if (chartOptions.xField && chartOptions.yField) {
+      console.log('Chart options updated:', chartOptions);
+      console.log('Current filtered data:', filteredData.length);
+    }
+  }, [chartOptions, filteredData]);
+
+  // After the existing useEffect for data changes
   useEffect(() => {
     setFilteredData(data);
   }, [data]);
@@ -421,39 +428,29 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   const renderChartConfig = () => {
     if (!data.length) return null;
     
-    // Get all fields from the data
-    const allFields = Object.keys(data[0]);
-    
-    // Identify numeric fields for Y-axis
-    const numericFields = allFields.filter(field => 
-      typeof data[0][field] === 'number' || 
-      !isNaN(Number(data[0][field]))
+    const numericalFields = Object.keys(data[0]).filter(key => 
+      typeof data[0][key] === 'number'
     );
     
-    // All fields can be used for X-axis, grouping, and coloring
-    const categoricalFields = allFields.filter(field => 
-      typeof data[0][field] === 'string' ||
-      data[0][field] instanceof Date
+    const categoricalFields = Object.keys(data[0]).filter(key => 
+      typeof data[0][key] === 'string'
     );
 
     return (
       <div className="chart-config">
-        <h4 className="config-section-title">Chart Configuration</h4>
-        
         <div className="config-group">
           <label>Chart Type</label>
           <select
             value={chartOptions.type}
             onChange={(e) => setChartOptions(prev => ({
               ...prev,
-              type: e.target.value as any
+              type: e.target.value as 'bar' | 'line'
             }))}
           >
             <option value="bar">Bar Chart</option>
             <option value="line">Line Chart</option>
             <option value="area">Area Chart</option>
             <option value="point">Scatter Plot</option>
-            <option value="circle">Bubble Chart</option>
           </select>
         </div>
 
@@ -467,7 +464,7 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
             }))}
           >
             <option value="">Select field</option>
-            {allFields.map(field => (
+            {Object.keys(data[0]).map(field => (
               <option key={field} value={field}>{field}</option>
             ))}
           </select>
@@ -483,7 +480,7 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
             }))}
           >
             <option value="">Select field</option>
-            {numericFields.map(field => (
+            {numericalFields.map(field => (
               <option key={field} value={field}>{field}</option>
             ))}
           </select>
@@ -495,7 +492,7 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
             value={chartOptions.aggregation}
             onChange={(e) => setChartOptions(prev => ({
               ...prev,
-              aggregation: e.target.value as any
+              aggregation: e.target.value
             }))}
           >
             <option value="count">Count</option>
@@ -503,23 +500,6 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
             <option value="mean">Average</option>
             <option value="min">Minimum</option>
             <option value="max">Maximum</option>
-            <option value="median">Median</option>
-          </select>
-        </div>
-
-        <div className="config-group">
-          <label>Group By</label>
-          <select
-            value={chartOptions.groupBy}
-            onChange={(e) => setChartOptions(prev => ({
-              ...prev,
-              groupBy: e.target.value
-            }))}
-          >
-            <option value="">None</option>
-            {categoricalFields.map(field => (
-              <option key={field} value={field}>{field}</option>
-            ))}
           </select>
         </div>
 
@@ -553,118 +533,165 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     });
   };
 
+  const renderChart = () => {
+    if (!chartOptions.xField || (chartOptions.aggregation !== 'count' && !chartOptions.yField)) {
+      return <div className="chart-placeholder">Please select fields to visualize</div>;
+    }
+
+    return (
+      <VegaChart 
+        data={filteredData}
+        options={chartOptions}
+        fields={data.length ? Object.keys(data[0]).map(key => ({
+          name: key,
+          type: typeof data[0][key] === 'number' ? 'quantitative' : 
+                data[0][key] instanceof Date ? 'temporal' : 'nominal'
+        })) : []}
+      />
+    );
+  };
+
   return (
     <div className="data-source">
-      <div className="data-source-header">
-        <div className="header-main">
-          <h2 className="data-source-title">{activeSource?.name}</h2>
-          <div className="data-source-metadata">
-            <span className="data-source-type">Type: {activeSource?.type}</span>
-            <span className="data-source-date">
-              Last Updated: {activeSource?.lastUpdated.toLocaleString()}
-            </span>
-          </div>
+      <div className="header-section">
+        <div className="dataset-info">
+          <h2>{activeSource?.name || 'No Dataset Loaded'}</h2>
+          <span className="dataset-type">Type: {activeSource?.type || 'snapshot'}</span>
+          <span className="last-updated">
+            Last Updated: {activeSource?.lastUpdated?.toLocaleString() || 'Never'}
+          </span>
         </div>
-        <div className="header-controls">
-          <select 
-            className="column-select"
-            value={options.maxColumns}
-            onChange={(e) => setOptions(prev => ({
-              ...prev,
-              maxColumns: e.target.value === 'all' ? 'all' : Number(e.target.value)
-            }))}
-          >
-            {columnOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <button 
-            className="reload-btn"
-            onClick={() => processData(data, activeSource?.name || '')}
-            title="Resample columns"
-          >
-            ↻
-          </button>
+        
+        <div className="control-panel">
+          <div className="control-group">
+            <select 
+              className="column-select"
+              value={options.maxColumns}
+              onChange={(e) => setOptions(prev => ({
+                ...prev,
+                maxColumns: e.target.value === 'all' ? 'all' : Number(e.target.value)
+              }))}
+            >
+              {columnOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="sample-control">
+              <input
+                type="number"
+                value={options.sampleSize}
+                onChange={(e) => {
+                  const newSize = Math.max(1, parseInt(e.target.value) || 5);
+                  setOptions(prev => ({
+                    ...prev,
+                    sampleSize: newSize
+                  }));
+                  if (data.length > 0) {
+                    processData(data, activeSource?.name || '');
+                  }
+                }}
+                className="sample-size-input"
+                min="1"
+                max="100"
+              />
+              <span className="input-label">samples</span>
+            </div>
+          </div>
+
+          <div className="file-control">
+            <button 
+              className="file-select-btn"
+              onClick={() => document.getElementById('file-input')?.click()}
+            >
+              <Upload />
+              <span>{selectedFile ? selectedFile.name : 'Select File'}</span>
+            </button>
+            <span className="supported-formats">JSON, CSV (max 50MB)</span>
+            <input
+              id="file-input"
+              type="file"
+              accept=".csv,.json"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="load-sample-btn"
+              onClick={loadSampleData}
+            >
+              Load Sample
+            </button>
+          </div>
+
+          <div className="sampling-methods">
+            <button
+              className={`method-btn ${options.sampleMethod === 'random' ? 'active' : ''}`}
+              onClick={() => setOptions(prev => ({ ...prev, sampleMethod: 'random' }))}
+              title="Random Sampling"
+            >
+              🎲
+            </button>
+            <button
+              className={`method-btn ${options.sampleMethod === 'frequency' ? 'active' : ''}`}
+              onClick={() => setOptions(prev => ({ ...prev, sampleMethod: 'frequency' }))}
+              title="Most Frequent"
+            >
+              📊
+            </button>
+            <button
+              className={`method-btn ${options.sampleMethod === 'first' ? 'active' : ''}`}
+              onClick={() => setOptions(prev => ({ ...prev, sampleMethod: 'first' }))}
+              title="First N Values"
+            >
+              1️⃣
+            </button>
+          </div>
         </div>
       </div>
       
       <div className="data-source-content">
         <div className={`main-panel ${isPanelOpen ? 'panel-open' : ''}`}>
-          <div className="input-section">
-            <div className="source-controls">
-              <div className="file-input-group">
-                <div className="file-upload">
-                  <button 
-                    className="file-upload-button"
-                    onClick={() => document.getElementById('file-input')?.click()}
-                  >
-                    <Upload />
-                  </button>
-                  <span className="file-name">
-                    {selectedFile ? selectedFile.name : 'No file chosen'}
-                  </span>
-                  <span className="supported-formats">
-                    Supported: JSON, CSV (max 50MB)
-                  </span>
-                  <input
-                    id="file-input"
-                    type="file"
-                    accept=".csv,.json"
-                    onChange={handleFileSelect}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-                <button 
-                  className="load-sample-btn"
-                  onClick={loadSampleData}
-                >
-                  Load Sample Data
-                </button>
-              </div>
-            </div>
-
-            {activeSource && (
-              <div className="source-info">
-                <h4>Fields:</h4>
-                <ul className="field-list">
-                  {activeSource.fields.map(field => (
-                    <li key={field.name} className="field-item">
-                      <div className="field-header">
-                        <span className="field-name">{field.name}</span>
-                        <span className="field-type">
-                          {getTypeIcon(field.type)}
-                          <span className="type-text">({field.type})</span>
-                        </span>
+          {activeSource && (
+            <div className="source-info">
+              <h4>Fields:</h4>
+              <ul className="field-list">
+                {activeSource.fields.map(field => (
+                  <li key={field.name} className="field-item">
+                    <div className="field-header">
+                      <span className="field-name">{field.name}</span>
+                      <span className="field-type">
+                        {getTypeIcon(field.type)}
+                        <span className="type-text">({field.type})</span>
+                      </span>
+                    </div>
+                    {data.length > 0 && (
+                      <div className="field-values">
+                        {(() => {
+                          const { values, total, hasMore } = getUniqueValues(data, field.name);
+                          return (
+                            <>
+                              {values.map((value, i) => (
+                                <span key={i} className="value-tag">
+                                  {String(value)}
+                                </span>
+                              ))}
+                              {hasMore && (
+                                <span className="more-values">
+                                  +{total - values.length} more
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
-                      {data.length > 0 && (
-                        <div className="field-values">
-                          {(() => {
-                            const { values, total, hasMore } = getUniqueValues(data, field.name);
-                            return (
-                              <>
-                                {values.map((value, i) => (
-                                  <span key={i} className="value-tag">
-                                    {String(value)}
-                                  </span>
-                                ))}
-                                {hasMore && (
-                                  <span className="more-values">
-                                    +{total - values.length} more
-                                  </span>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {data.length > 0 && (
             <div className="output-section">
@@ -685,14 +712,7 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
               
               <div className="view-container">
                 {viewOptions.showChart && (
-                  <VegaChart 
-                    data={filteredData}
-                    options={chartOptions}
-                    fields={data.length ? Object.keys(data[0]).map(key => ({
-                      name: key,
-                      type: typeof data[0][key]
-                    })) : []}
-                  />
+                  renderChart()
                 )}
                 
                 {viewOptions.showData && (
@@ -731,21 +751,16 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
             {isPanelOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
           
-          <div className="query-builder-container">
-            <div className="query-builder-header">
-              <h3 className="query-builder-title">Query & Visualization</h3>
+          <div className="query-visualization">
+            <h2 className="section-title">Query & Visualization</h2>
+              <QueryBuilder 
+                fields={activeSource?.fields || []}
+                onQueryChange={handleQueryChange}
+              />
+            <div className="chart-configuration">
+              <h3 className="subsection-title">Chart Configuration</h3>
+              {renderChartConfig()}
             </div>
-            
-            <QueryBuilder 
-              onQueryChange={handleQueryChange}
-              availableFields={data.length ? Object.keys(data[0]) : []}
-              fieldTypes={data.length ? Object.keys(data[0]).reduce((types, key) => ({
-                ...types,
-                [key]: typeof data[0][key]
-              }), {}) : {}}
-            />
-            
-            {renderChartConfig()}
           </div>
         </div>
       </div>
