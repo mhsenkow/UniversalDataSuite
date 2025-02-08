@@ -103,6 +103,11 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     color: '',
     groupBy: ''
   });
+  const [viewOptions, setViewOptions] = useState({
+    showChart: true,
+    showData: false
+  });
+  const [preloadedTable, setPreloadedTable] = useState<React.ReactNode>(null);
 
   // Update the column selector options
   const columnOptions = [
@@ -357,16 +362,16 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
         const value = item[condition.field];
         switch (condition.operator) {
           case 'equals':
-            return value === condition.value;
+            return value === condition.value || value?.toString() === condition.value;
           case 'contains':
             return value?.toString().toLowerCase().includes(condition.value.toLowerCase());
           case 'greater_than':
-            return value > Number(condition.value);
+            return Number(value) > Number(condition.value);
           case 'less_than':
-            return value < Number(condition.value);
+            return Number(value) < Number(condition.value);
           case 'between':
             const range = JSON.parse(condition.value);
-            return value >= Number(range.min) && value <= Number(range.max);
+            return Number(value) >= Number(range.min) && Number(value) <= Number(range.max);
           case 'starts_with':
             return value?.toString().toLowerCase().startsWith(condition.value.toLowerCase());
           case 'ends_with':
@@ -383,6 +388,34 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
   useEffect(() => {
     setFilteredData(data);
   }, [data]);
+
+  // Add this useEffect to preload the table
+  useEffect(() => {
+    if (!data.length) return;
+    
+    setPreloadedTable(
+      <div className="data-table">
+        <table>
+          <thead>
+            <tr>
+              {Object.keys(data[0]).map(key => (
+                <th key={key}>{key}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.slice(0, 100).map((row, i) => (
+              <tr key={i}>
+                {Object.keys(data[0]).map(key => (
+                  <td key={key}>{String(row[key])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }, [data, filteredData]);
 
   // Add chart configuration section to the side panel
   const renderChartConfig = () => {
@@ -509,6 +542,17 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
     );
   };
 
+  const toggleView = (view: 'chart' | 'data') => {
+    setViewOptions(prev => {
+      const newState = { ...prev, [view]: !prev[view] };
+      // Ensure at least one is always true
+      if (!newState.showChart && !newState.showData) {
+        newState[view] = true;
+      }
+      return newState;
+    });
+  };
+
   return (
     <div className="data-source">
       <div className="data-source-header">
@@ -624,17 +668,55 @@ export const DataSource: React.FC<DataSourceProps> = ({ onDataChange }) => {
 
           {data.length > 0 && (
             <div className="output-section">
-              <VegaChart 
-                data={filteredData}
-                options={chartOptions}
-                fields={data.length ? Object.keys(data[0]).map(key => ({
-                  name: key,
-                  type: typeof data[0][key]
-                })) : []}
-              />
-              <div className="data-preview">
-                <h2>Data Preview</h2>
-                <pre>{JSON.stringify(filteredData.slice(0, 10), null, 2)}</pre>
+              <div className="view-tabs">
+                <button 
+                  className={`view-tab ${viewOptions.showChart ? 'active' : ''}`}
+                  onClick={() => setViewOptions({ showChart: true, showData: false })}
+                >
+                  Chart View
+                </button>
+                <button 
+                  className={`view-tab ${viewOptions.showData ? 'active' : ''}`}
+                  onClick={() => setViewOptions({ showChart: false, showData: true })}
+                >
+                  Data View
+                </button>
+              </div>
+              
+              <div className="view-container">
+                {viewOptions.showChart && (
+                  <VegaChart 
+                    data={filteredData}
+                    options={chartOptions}
+                    fields={data.length ? Object.keys(data[0]).map(key => ({
+                      name: key,
+                      type: typeof data[0][key]
+                    })) : []}
+                  />
+                )}
+                
+                {viewOptions.showData && (
+                  <div className="data-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          {Object.keys(data[0]).map(key => (
+                            <th key={key}>{key}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredData.slice(0, 100).map((row, i) => (
+                          <tr key={i}>
+                            {Object.keys(data[0]).map(key => (
+                              <td key={key}>{String(row[key])}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

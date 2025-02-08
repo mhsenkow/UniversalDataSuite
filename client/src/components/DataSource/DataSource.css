@@ -116,6 +116,9 @@
   padding: 16px;
   height: 100%;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .query-builder-header {
@@ -545,11 +548,13 @@ input[type="file"] {
 }
 
 .output-section {
-  background: #fafafa;
-  border-top: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 24px;
-  margin-top: auto;
-  border-radius: 0 0 8px 8px;
+  background: var(--background-primary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
 }
 
 .chart-config {
@@ -589,4 +594,217 @@ input[type="file"] {
   outline: none;
   border-color: #0066cc;
   box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.query-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.query-condition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--background-secondary);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.query-condition select,
+.query-condition input {
+  flex: 1;
+  min-width: 120px;
+  max-width: 100%;
+}
+
+.query-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.add-condition-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.data-preview {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-height: 300px;
+}
+
+.data-preview h2 {
+  font-size: var(--scale-1);
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.data-preview pre {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--scale-00);
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.view-toggles {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.view-toggle {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background: var(--background-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-toggle.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.views-container {
+  display: flex;
+  gap: 16px;
+  min-height: 400px;
+}
+
+.view-panel {
+  flex: 1;
+  min-width: 0;
+  background: var(--background-secondary);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  overflow: auto;
+  max-height: 600px;
+}
+
+.view-panel.full-width {
+  width: 100%;
+}
+
+.data-preview {
+  height: 100%;
+  overflow: auto;
+}
+
+.data-preview pre {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--scale-00);
+}
+
+.data-table {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--background-primary);
+  border-radius: var(--radius-sm);
+}
+
+.data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--scale-00);
+}
+
+.data-table th {
+  background: var(--background-secondary);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background: var(--background-secondary);
+}
+
+.view-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.view-tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--scale-0);
+  transition: all 0.2s ease;
+}
+
+.view-tab:hover {
+  color: var(--text-primary);
+}
+
+.view-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.view-container {
+  flex: 1;
+  overflow: auto;
+  height: calc(100vh - 300px);
+}
+
+.data-table {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.data-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  background: var(--background-secondary);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table tr:hover td {
+  background: var(--background-secondary);
 }

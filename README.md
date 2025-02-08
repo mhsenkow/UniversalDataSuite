@@ -1,4 +1,4 @@
-# Jacklyn Domino
+# Jacklyn Domino# Jacklyn Domino
 
 A modern data exploration suite that democratizes data insights through an intuitive, no-code interface.
 
@@ -23,17 +23,20 @@ A modern data exploration suite that democratizes data insights through an intui
 
 ### Analysis Tools
 - [x] No-code query builder
-- [x] Basic data filtering
-- [x] CSV & JSON support
+- [x] Advanced data filtering (equals, contains, greater/less than, between)
+- [x] CSV support with automatic type detection
 - [x] Real-time data preview
-- [x] Field type visualization
+- [x] Field type visualization with Carbon icons
 - [ ] Interactive notebook-style analysis
 - [ ] AI-assisted query generation
 - [ ] Live/snapshot data mode switching
 
 ### Visualization & Dashboards
-- [x] Basic data charting
+- [x] Basic data charting (Bar, Scatter)
 - [x] Field value distribution analysis
+- [x] Real-time chart updates
+- [x] Chart/Data view tabs
+- [x] Aggregation options (Count)
 - [ ] Advanced Vega-powered visualizations
 - [ ] Customizable dashboard layouts
 - [ ] Pre-made templates
@@ -54,6 +57,35 @@ A modern data exploration suite that democratizes data insights through an intui
 - Build Tool: Vite
 - Backend: TBD
 
+## 📊 Current Implementation
+
+### Data Import & Processing
+- Support for CSV files with progress indicators
+- Automatic type inference (string, number, date, boolean)
+- Column sampling and preview
+- Error handling and validation
+- Sample dataset (Bird Strikes) integration
+- Interactive field type indicators with Carbon icons
+- Unique value analysis per field
+- Data quality metrics
+- Real-time loading progress
+- Error reporting and validation
+
+### Query System
+- Dynamic field-based filtering
+- Multiple operator support:
+  - Text: contains, equals, starts with, ends with
+  - Numbers: equals, greater than, less than, between
+- Real-time query preview
+- Type-specific operators
+
+### Visualization
+- Tab-based view switching
+- Full-screen chart/data views
+- Real-time data table with 100 row preview
+- Interactive Vega charts
+- Chart configuration panel
+
 ## 🏃‍♂️ Getting Started
 
 1. Clone the repository:
@@ -63,29 +95,12 @@ cd jacklyn-domino
 2. Install dependencies
 bash
 npm install
+3. Start the development server:
+bash
+npm run dev
 
-## 📊 Current Features
 
-### Data Import
-- Support for CSV and JSON files up to 50MB
-- Automatic type inference (string, number, date, boolean)
-- Progress indicators for large file uploads
-- Error handling and validation
-- Sample dataset integration
 
-### Data Preview
-- Interactive field type indicators with Carbon icons
-- Unique value analysis per field
-- Data quality metrics
-- Real-time loading progress
-- Error reporting and validation
-
-### Type System
-Supports the following data types:
-- String (Text data)
-- Number (Numeric values)
-- Date (Temporal data)
-- Boolean (True/false values)
 
 ## 🤝 Contributing
 
